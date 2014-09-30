@@ -1,0 +1,12 @@
+*~
+*.hi
+*.o
+TestMain
+foo
+tcp_client
+tcp_client2
+tcp_serve
+test
+test2
+.#*
+#*#
