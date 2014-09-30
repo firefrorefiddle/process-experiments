@@ -19,7 +19,18 @@ import Common
 
 -- from tcp_serve
 getShell :: (MonadIO m) => m ByteString
-getShell = liftIO $ getEnvDefault "SHELL" "/bin/sh"
+getShell = return "/bin/sh" -- liftIO $ getEnvDefault "SHELL" "/bin/sh"
+
+executeInForkShell' :: (MonadIO m) =>
+                      Bool ->
+                      ByteString ->
+                      Maybe [(ByteString, ByteString)] ->
+                      Maybe Fd -> -- stdin
+                      Maybe Fd -> -- stdout
+                      m ProcessID
+executeInForkShell' waitRead cmd env stdin stdout = 
+    (flip runStateT [] $ 
+         executeInForkShell waitRead cmd env stdin stdout) >>= return . fst
 
 executeInForkShell :: (MonadState [Fd] m, MonadIO m) =>
                       Bool ->
@@ -31,7 +42,7 @@ executeInForkShell :: (MonadState [Fd] m, MonadIO m) =>
 executeInForkShell waitRead cmd env stdin stdout = do
   sh <- getShell
   pid <- executeInFork waitRead sh False ["-c", cmd] env stdin stdout
-  debug $ putStrLn $ "forked " ++ show pid ++ " " ++ show cmd ++ " WaitForInput? " ++ show waitRead
+  liftIO $ putStrLn $ "forked " ++ show pid ++ " " ++ show cmd ++ " WaitForInput? " ++ show waitRead
   return pid
   
 -- from hssh
@@ -64,7 +75,6 @@ runTest prog = do
 --  installHandler sigCHLD (Catch collectAnyChild) Nothing
   flip runStateT [] prog
 
--- from tcp_serve
 collectAnyChild = do
     res <- getAnyProcessStatus False True
     case res of
