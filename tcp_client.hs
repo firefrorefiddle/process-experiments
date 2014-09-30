@@ -18,7 +18,7 @@ import Pipes.ByteString (fromHandle, toHandle, stdin, stdout)
 import qualified Data.Map as M
 import Data.Map ((!))
 import qualified Data.ByteString.Char8 as B
-
+import Data.Maybe (isJust)
 
 data OpMode = SendNothing
             | SendString B.ByteString

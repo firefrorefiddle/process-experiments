@@ -15,6 +15,8 @@ import Control.Monad
 import Control.Exception (bracketOnError)
 import Control.Concurrent (forkIO)
 
+import Data.Maybe (isJust)
+import qualified Data.Map as M
 import Data.Map ((!))
 import qualified Data.ByteString.Char8 as B
 
@@ -38,18 +40,19 @@ connectTo hostname port = do
           return sock -- instead of converting it to a Handle
         )
 
-run server port prog = do  
+run server port prog receive = do  
   sock <- connectTo server port
-  shutdown sock ShutdownSend
   let fd = socketFd sock
   setFdOption fd NonBlockingRead False
-  dupTo fd stdInput
---  dupTo fd stdOutput
-  executeFile "/bin/sh" False ["-c",prog] Nothing
+  if receive
+  then dupTo fd stdInput  >> shutdown sock ShutdownSend
+  else dupTo fd stdOutput >> shutdown sock ShutdownReceive
+  executeFile "/bin/sh" False ["-c", prog] Nothing
 
-options = [ (arg,   "port",    Required,            "port to connect to.")
-          , (arg,   "server",  Default "localhost", "host address or name to connect to (default=localhost).")
-          , (noArg, "exec", Optional,               "execute prog.")
+options = [ (arg, "port",    Required,            "port to connect to.")
+          , (arg, "server",  Default "localhost", "host address or name to connect to (default=localhost).")
+          , (arg, "exec",    Optional,            "execute prog.")
+          , (noArg, "receive",  Optional,         "instead of sending.")  
           ]
           
 main = do
@@ -57,5 +60,5 @@ main = do
   let server               = dropWhile (== '=') $ opts ! "server"
   let (port :: PortNumber) = fromIntegral . read $ opts ! "port"
   let prog                 = B.pack $ opts ! "exec"
-                         
-  run server port prog
+  let receive              = isJust $ M.lookup "receive" opts
+  run server port prog receive
